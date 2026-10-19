@@ -1,7 +1,9 @@
-"""demo กล้องสด: ทายตัวอักษรจากมือทีละเฟรมแล้วแสดงบนจอ กด q เพื่อออก
+"""Live camera demo: predicts a letter for the hand in each frame and shows it on screen. Press q to quit.
 
-ตัวที่แสดงคือตัวที่ชนะโหวตใน SMOOTH_WIN เฟรมล่าสุด และต้องมี probability ในเฟรมปัจจุบันอย่างน้อย CONF_THRESH
-เฟรมถูก flip เป็นภาพกระจกก่อน detect ได้ เพราะ dataset มีมือทั้งสองด้าน โมเดลจึงแม่นใกล้เคียงกันทั้งสองแบบ
+The letter shown is the majority vote over the last SMOOTH_WIN frames, displayed only when its
+probability in the current frame is at least CONF_THRESH. Frames are mirrored before detection;
+this is safe because the dataset contains both hand orientations and the model is about equally
+accurate on each.
 """
 from __future__ import annotations
 
@@ -36,7 +38,7 @@ def load_classifier(name: str = "best"):
 
 
 def build_detector() -> HandLandmarker:
-    """HandLandmarker โหมด VIDEO ซึ่งใช้ tracking ข้ามเฟรม ต้องส่ง timestamp ที่เพิ่มขึ้นทุกเฟรม"""
+    """Create a HandLandmarker in VIDEO mode, which tracks across frames and needs strictly increasing timestamps."""
     opts = HandLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=MODEL_PATH),
         running_mode=RunningMode.VIDEO,
@@ -48,7 +50,7 @@ def build_detector() -> HandLandmarker:
 
 
 def draw_thai(frame: np.ndarray, text: str, pos: tuple, size: int = FONT_SIZE) -> np.ndarray:
-    """วาดข้อความผ่าน Pillow เพราะ cv2.putText วาดอักษรไทยไม่ได้"""
+    """Draw text through Pillow, because cv2.putText cannot render Thai script."""
     pil   = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     draw  = ImageDraw.Draw(pil)
     try:

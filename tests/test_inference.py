@@ -1,6 +1,6 @@
-"""ตรวจว่าเส้นทางที่ demo ใช้ทาย (src/inference.py) ให้ผลเท่ากับ offline eval บนข้อมูลที่มี label
+"""Checks that the demo inference path (src/inference.py) agrees with the offline evaluation on labelled data.
 
-ใช้ landmark จาก data/processed แทนกล้อง จึงรันได้ทุกเครื่อง รวมถึงใน Docker
+Landmarks come from data/processed instead of a camera, so these tests run anywhere, including Docker.
 """
 import sys
 from pathlib import Path
@@ -30,12 +30,12 @@ def _load(split: str) -> pd.DataFrame:
 
 
 def _as_landmarks(row) -> list:
-    """สร้าง object ที่มี .x .y .z จากแถว CSV ให้หน้าตาเหมือน landmark ที่ MediaPipe คืนมา"""
+    """Rebuild MediaPipe-like landmark objects (.x/.y/.z) from a CSV row."""
     return [SimpleNamespace(x=row[f"x{i}"], y=row[f"y{i}"], z=row[f"z{i}"]) for i in range(21)]
 
 
 def _demo_path(clf, df: pd.DataFrame) -> np.ndarray:
-    """ทายทีละแถวผ่าน inference.py แบบเดียวกับที่ demo ทำกับแต่ละเฟรม"""
+    """Predict row by row through inference.py, the same way the demos handle each frame."""
     preds = []
     for _, row in df.iterrows():
         if not row["detected"]:
@@ -54,8 +54,8 @@ def knn():
 
 
 def test_probabilities_follow_classifier_class_order(knn):
-    """ลำดับ classes_ ต่างจาก dataset.CLASSES อยู่แล้ว ถ้ามีการแปลง index เป็นชื่อคลาสผิดลำดับ เทสนี้จะ fail"""
-    assert list(knn.classes_) != CODES, "ลำดับตรงกันโดยบังเอิญ เทสนี้จะจับ bug ลำดับ label ไม่ได้"
+    """``classes_`` is ordered differently from ``dataset.CLASSES``, so a wrong index-to-name mapping fails here."""
+    assert list(knn.classes_) != CODES, "class orders match by coincidence; this test cannot catch an ordering bug"
     X, _, _ = normalize_df(_load("test").head(60))
     for x in X:
         probs = class_probabilities(knn, x)
@@ -64,7 +64,7 @@ def test_probabilities_follow_classifier_class_order(knn):
 
 
 def test_demo_path_matches_offline_predict(knn):
-    """ทายทีละเฟรมแบบ demo ต้องได้ผลเท่ากับ predict ทั้ง batch ทุกแถวของ test split"""
+    """Per-frame predictions must equal batch ``predict`` on every row of the test split."""
     df = _load("test")
     X, y, _ = normalize_df(df)
     preds = _demo_path(knn, df)
@@ -73,12 +73,12 @@ def test_demo_path_matches_offline_predict(knn):
     assert (preds == y).mean() > 0.90
 
 
-@pytest.mark.skipif(not BEST_MODEL.exists(), reason="models/best.joblib ไม่อยู่ใน git ต้อง train ก่อน")
+@pytest.mark.skipif(not BEST_MODEL.exists(), reason="models/best.joblib is not tracked by git; run src/train.py first")
 def test_best_model_demo_path_matches_offline_eval():
-    """เหมือนเทสก่อนหน้าแต่ใช้ models/best.joblib ตัวจริง
+    """Same check against the real models/best.joblib.
 
-    ยอมให้ต่างจาก predict ได้ไม่เกิน 1% เพราะ SVC คำนวณ predict_proba ด้วย Platt scaling
-    ทำให้ argmax ของ probability ไม่ตรงกับ predict ได้บางแถว
+    Up to 1% disagreement with ``predict`` is allowed: SVC computes ``predict_proba`` with Platt
+    scaling, so its argmax can differ from ``predict`` on a few rows.
     """
     import joblib
 

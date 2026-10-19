@@ -1,6 +1,6 @@
-"""เส้นทาง inference ของ demo: landmarks จาก MediaPipe → feature → probability ต่อคลาส
+"""Inference path shared by the demos: MediaPipe landmarks -> features -> class probabilities.
 
-demo ทุกตัวต้องทายผ่านโมดูลนี้ ผลจะได้ตรงกับ offline eval
+Every demo should predict through this module so that live results match the offline evaluation.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from features import normalize
 
 
 def landmarks_to_row(landmarks) -> dict:
-    """แปลง landmark 21 จุด (object ที่มี .x .y .z) เป็น dict คอลัมน์ x0..z20 แบบเดียวกับใน CSV ของ extract.py"""
+    """Convert 21 landmarks (objects with .x/.y/.z) into the x0..z20 columns written by extract.py."""
     row = {}
     for i, lm in enumerate(landmarks):
         row[f"x{i}"] = lm.x
@@ -22,17 +22,34 @@ def landmarks_to_row(landmarks) -> dict:
 
 
 def class_probabilities(clf, feat: np.ndarray) -> dict:
-    """คืน {ชื่อคลาส: probability} โดยผูกกับ clf.classes_
+    """Return the probability of every class, keyed by class name.
 
-    sklearn เรียงคอลัมน์ของ predict_proba ตาม classes_ (a–z) ซึ่งไม่ใช่ลำดับใน dataset.CLASSES
-    จึงห้ามเอา index ของ probability ไปเปิดใน list อื่นเอง
+    The columns of ``predict_proba`` follow ``clf.classes_`` (sorted labels), not the order of
+    ``dataset.CLASSES``, so never map a column index to a class name by hand.
+
+    Args:
+        clf: Fitted classifier or pipeline that supports ``predict_proba``.
+        feat: Feature vector produced by ``features.normalize``.
+
+    Returns:
+        Dict mapping class name to probability.
     """
     proba = clf.predict_proba(np.asarray(feat, dtype=np.float64).reshape(1, -1))[0]
     return dict(zip(clf.classes_, proba))
 
 
 def predict_from_landmarks(clf, landmarks, img_w: int, img_h: int) -> Optional[dict]:
-    """ทายจาก landmarks ของภาพขนาด img_w×img_h ที่ใช้ detect คืน {ชื่อคลาส: probability} หรือ None ถ้า landmark เสีย"""
+    """Predict class probabilities for one detected hand.
+
+    Args:
+        clf: Fitted classifier or pipeline that supports ``predict_proba``.
+        landmarks: The 21 landmarks MediaPipe returned for the hand.
+        img_w: Width in pixels of the image the hand was detected on.
+        img_h: Height in pixels of that image.
+
+    Returns:
+        Dict mapping class name to probability, or None if the landmarks are degenerate.
+    """
     feat = normalize(landmarks_to_row(landmarks), img_w, img_h)
     if feat is None:
         return None
@@ -40,6 +57,6 @@ def predict_from_landmarks(clf, landmarks, img_w: int, img_h: int) -> Optional[d
 
 
 def top_label(probs: dict) -> tuple:
-    """คืน (ชื่อคลาส, probability) ของคลาสที่ probability สูงสุด"""
+    """Return ``(class_name, probability)`` for the most likely class."""
     label = max(probs, key=probs.get)
     return label, float(probs[label])

@@ -1,6 +1,7 @@
-"""normalize พิกัด landmark ให้เป็น feature ที่ train, evaluate และ demo ใช้ร่วมกัน
+"""Landmark normalization shared by training, evaluation and the demos.
 
-ถ้าแก้ไฟล์นี้ต้อง train ใหม่ ไม่ต้อง extract ใหม่ เพราะ CSV เก็บพิกัดดิบไว้
+Any change here requires retraining. Re-extraction is not needed because the CSVs keep the raw
+coordinates.
 """
 from __future__ import annotations
 
@@ -14,10 +15,20 @@ N_FEATURES = 63
 
 
 def normalize(row: Union[pd.Series, dict], img_w: int, img_h: int) -> Optional[np.ndarray]:
-    """แปลงพิกัดดิบของ MediaPipe (0–1 ตามความกว้าง/สูงของภาพ) เป็น feature 63 มิติ
+    """Convert raw MediaPipe landmarks into a 63-dimensional feature vector.
 
-    ผลลัพธ์ไม่ขึ้นกับตำแหน่งมือ ระยะห่างจากกล้อง และสัดส่วนภาพ: ข้อมืออยู่ที่จุดกำเนิด
-    ใช้ระยะข้อมือถึงโคนนิ้วกลาง (จุด 9) เป็นหน่วยความยาว และคืน None ถ้าสองจุดนี้ทับกัน
+    The result does not depend on hand position, distance from the camera or image aspect ratio:
+    the wrist is moved to the origin and the wrist-to-middle-finger-MCP distance (point 9) becomes
+    the unit length.
+
+    Args:
+        row: Mapping with keys x0..z20 holding MediaPipe's normalized coordinates (fractions of
+            the image width and height).
+        img_w: Width in pixels of the image the landmarks were detected on.
+        img_h: Height in pixels of that image.
+
+    Returns:
+        Flattened array of 21 points x (x, y, z), or None when the wrist and point 9 coincide.
     """
     aspect = img_w / img_h
 
@@ -37,7 +48,11 @@ def normalize(row: Union[pd.Series, dict], img_w: int, img_h: int) -> Optional[n
 
 
 def normalize_df(df: pd.DataFrame) -> tuple:
-    """normalize ทุกแถวที่ detected=1 คืน (X, y, mask) โดย mask ยาวเท่า df และเป็น True เฉพาะแถวที่อยู่ใน X"""
+    """Normalize every row with ``detected == 1``.
+
+    Returns:
+        ``(X, y, mask)`` where ``mask`` has one entry per row of ``df`` and is True for the rows kept in ``X``.
+    """
     X_rows, y_rows, mask = [], [], []
 
     for _, row in df.iterrows():
@@ -56,7 +71,7 @@ def normalize_df(df: pd.DataFrame) -> tuple:
 
 
 def mirror(X: np.ndarray) -> np.ndarray:
-    """กลับซ้ายขวาบน feature ที่ normalize แล้ว (กลับเครื่องหมายแกน x) ใช้ทำ data augmentation"""
+    """Flip normalized features left-right by negating every x coordinate; used for data augmentation."""
     X_m = X.copy()
     x_idx = [i * 3 for i in range(21)]
     X_m[:, x_idx] *= -1
