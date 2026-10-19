@@ -1,13 +1,17 @@
-experiment,model,augment,tuned,split,accuracy,macro_f1,train_sec
-E2_baseline,knn,False,False,test,0.942,0.9414,0.0
-E2_baseline,svm,False,False,test,0.9577,0.9577,2.21
-E2_baseline,rf,False,False,test,0.9613,0.9613,0.65
-E2_baseline,mlp,False,False,test,0.9749,0.9748,8.06
-E3_tuned,knn,False,True,test,0.9764,0.9764,1.64
-E3_tuned,svm,False,True,test,0.9828,0.9827,10.99
-E3_tuned,rf,False,True,test,0.9592,0.9592,12.41
-E3_tuned,mlp,False,True,test,0.9764,0.9764,38.45
-E4_mirror_aug,knn,True,False,test,0.9491,0.9495,0.0
-E4_mirror_aug,svm,True,False,test,0.9556,0.9555,7.73
-E4_mirror_aug,rf,True,False,test,0.9628,0.9627,1.23
-E4_mirror_aug,mlp,True,False,test,0.9735,0.9735,16.24
+experiment,features,model,augment,tuned,params,split,accuracy,macro_p,macro_r,macro_f1,train_sec
+E1_raw,raw,knn,False,False,"{""n_neighbors"": 5, ""weights"": ""uniform""}",test,0.7851,0.7892,0.7853,0.7836,0.0
+E1_raw,raw,svm,False,False,"{""C"": 10, ""gamma"": ""scale""}",test,0.957,0.9574,0.9571,0.9569,2.87
+E1_raw,raw,rf,False,False,"{""n_estimators"": 300, ""max_depth"": null}",test,0.9348,0.9353,0.9349,0.9346,0.68
+E1_raw,raw,mlp,False,False,"{""hidden_layer_sizes"": [128, 64], ""alpha"": 0.0001}",test,0.9563,0.9566,0.9563,0.9557,4.15
+E2_baseline,normalized,knn,False,False,"{""n_neighbors"": 5, ""weights"": ""uniform""}",test,0.942,0.9424,0.9419,0.9414,0.0
+E2_baseline,normalized,svm,False,False,"{""C"": 10, ""gamma"": ""scale""}",test,0.9577,0.9593,0.9579,0.9577,2.08
+E2_baseline,normalized,rf,False,False,"{""n_estimators"": 300, ""max_depth"": null}",test,0.9613,0.9621,0.9614,0.9613,0.63
+E2_baseline,normalized,mlp,False,False,"{""hidden_layer_sizes"": [128, 64], ""alpha"": 0.0001}",test,0.9749,0.9755,0.9749,0.9748,13.14
+E3_tuned,normalized,knn,False,True,"{""n_neighbors"": 1, ""weights"": ""uniform""}",test,0.9764,0.9772,0.9763,0.9764,1.59
+E3_tuned,normalized,svm,False,True,"{""C"": 100, ""gamma"": 0.1}",test,0.9828,0.983,0.9828,0.9827,11.56
+E3_tuned,normalized,rf,False,True,"{""n_estimators"": 500, ""max_depth"": null}",test,0.9592,0.9603,0.9592,0.9592,12.44
+E3_tuned,normalized,mlp,False,True,"{""hidden_layer_sizes"": [128, 64], ""alpha"": 0.001}",test,0.9821,0.9823,0.982,0.982,39.56
+E4_mirror_aug,normalized,knn,True,False,"{""n_neighbors"": 5, ""weights"": ""uniform""}",test,0.9491,0.9528,0.9492,0.9495,0.01
+E4_mirror_aug,normalized,svm,True,False,"{""C"": 10, ""gamma"": ""scale""}",test,0.9556,0.9569,0.9557,0.9555,7.94
+E4_mirror_aug,normalized,rf,True,False,"{""n_estimators"": 300, ""max_depth"": null}",test,0.9628,0.9632,0.9628,0.9627,1.43
+E4_mirror_aug,normalized,mlp,True,False,"{""hidden_layer_sizes"": [128, 64], ""alpha"": 0.0001}",test,0.9735,0.974,0.9735,0.9735,18.09

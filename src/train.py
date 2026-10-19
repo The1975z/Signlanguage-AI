@@ -1,9 +1,10 @@
 """Train and select the classifier.
 
-Runs experiments E2 (baseline), E3 (GridSearchCV) and E4 (mirror augmentation) for KNN, SVM, RF
-and MLP, scores every model on the test split, and saves the one with the best macro-F1 as
-models/best.joblib. All scores go to results/experiments.csv, which is overwritten on each run.
-The unseen split is never used here.
+Runs experiments E1 (raw coordinates), E2 (normalized baseline), E3 (GridSearchCV) and E4 (mirror
+augmentation) for KNN, SVM, RF and MLP, and scores every model on the test split. The model with the
+best macro-F1 among the normalized experiments is saved as models/best.joblib; E1 only serves as the
+comparison, because evaluate.py and the demos feed normalized features. All scores go to
+results/experiments.csv, which is overwritten on each run. The unseen split is never used here.
 """
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ import numpy as np
 import pandas as pd
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -30,33 +31,41 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from config import SEED
-from features import mirror, normalize_df
+from features import LM_COLS, mirror, normalize_df
 
 CV_FOLDS   = 5
 OUT_DIR    = ROOT / "models"
 RESULT_CSV = ROOT / "results" / "experiments.csv"
-RESULT_COLUMNS = ["experiment", "model", "augment", "tuned", "split", "accuracy", "macro_f1", "train_sec"]
+RESULT_COLUMNS = ["experiment", "features", "model", "augment", "tuned", "params", "split",
+                  "accuracy", "macro_p", "macro_r", "macro_f1", "train_sec"]
 
 
 class Experiment(NamedTuple):
     tag: str
+    features: str
     use_mirror: bool
     use_grid_search: bool
 
 
 EXPERIMENTS = [
-    Experiment("E2_baseline", use_mirror=False, use_grid_search=False),
-    Experiment("E3_tuned", use_mirror=False, use_grid_search=True),
-    Experiment("E4_mirror_aug", use_mirror=True, use_grid_search=False),
+    Experiment("E1_raw", "raw", use_mirror=False, use_grid_search=False),
+    Experiment("E2_baseline", "normalized", use_mirror=False, use_grid_search=False),
+    Experiment("E3_tuned", "normalized", use_mirror=False, use_grid_search=True),
+    Experiment("E4_mirror_aug", "normalized", use_mirror=True, use_grid_search=False),
 ]
 
 
 def load_split(split_key: str) -> tuple:
-    """Load data/processed/landmarks_<split_key>.csv and return normalized ``(X, y)`` for the usable rows."""
-    path = ROOT / "data" / "processed" / f"landmarks_{split_key}.csv"
-    df   = pd.read_csv(path)
-    X, y, _ = normalize_df(df)
-    return X, y
+    """Load data/processed/landmarks_<split_key>.csv as features for the usable rows.
+
+    Returns:
+        ``(X_normalized, X_raw, y)`` for the same rows: ``X_raw`` holds the coordinates exactly as
+        MediaPipe returned them (E1), ``X_normalized`` the output of ``features.normalize``.
+    """
+    df = pd.read_csv(ROOT / "data" / "processed" / f"landmarks_{split_key}.csv")
+    X, y, mask = normalize_df(df)
+    X_raw = df.loc[mask, LM_COLS].to_numpy(dtype=np.float64)
+    return X, X_raw, y
 
 
 def augment(X: np.ndarray, y: np.ndarray) -> tuple:
@@ -95,8 +104,7 @@ PARAM_GRIDS: dict[str, dict] = {
     "knn": {"clf__n_neighbors": [1, 3, 5, 7, 9], "clf__weights": ["uniform", "distance"]},
     "svm": {"clf__C": [1, 10, 100], "clf__gamma": ["scale", 0.01, 0.1]},
     "rf":  {"clf__n_estimators": [200, 500], "clf__max_depth": [None, 20]},
-    "mlp": {"clf__hidden_layer_sizes": [(64,), (128, 64), (256, 128)], "clf__alpha": [1e-4, 1e-3],
-            "clf__max_iter": [300]},
+    "mlp": {"clf__hidden_layer_sizes": [(64,), (128, 64)], "clf__alpha": [1e-4, 1e-3]},
 }
 
 
@@ -111,6 +119,12 @@ def tune(name: str, pipe: Pipeline, X: np.ndarray, y: np.ndarray) -> Pipeline:
     gs.fit(X, y)
     print(f"  best params: {gs.best_params_}  cv-macro-F1: {gs.best_score_:.4f}")
     return gs.best_estimator_
+
+
+def tracked_params(name: str, model: Pipeline) -> str:
+    """Return the values of the grid-searched parameters of ``model`` as JSON, for the experiment log."""
+    params = model.get_params()
+    return json.dumps({key.split("__", 1)[1]: params[key] for key in PARAM_GRIDS[name]}, default=str)
 
 
 def save_model(pipe: Pipeline, name: str, experiment: str):
@@ -143,33 +157,43 @@ def append_result(row: dict):
 
 def main():
     print("โหลด train / test ...")
-    X_tr, y_tr = load_split("train")
-    X_te, y_te = load_split("test")
+    X_tr, X_tr_raw, y_tr = load_split("train")
+    X_te, X_te_raw, y_te = load_split("test")
     X_aug, y_aug = augment(X_tr, y_tr)
     print(f"  train: {X_tr.shape}  train+mirror: {X_aug.shape}  test: {X_te.shape}")
+
+    train_sets = {
+        ("raw", False):        (X_tr_raw, y_tr),
+        ("normalized", False): (X_tr, y_tr),
+        ("normalized", True):  (X_aug, y_aug),
+    }
+    test_sets = {"raw": X_te_raw, "normalized": X_te}
 
     RESULT_CSV.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(columns=RESULT_COLUMNS).to_csv(RESULT_CSV, index=False)
 
     best_f1, best_pipe, best_name = -1.0, None, ""
     for exp in EXPERIMENTS:
-        print(f"\n=== {exp.tag} ===")
-        X_fit, y_fit = (X_aug, y_aug) if exp.use_mirror else (X_tr, y_tr)
+        print(f"\n=== {exp.tag} ({exp.features}) ===")
+        X_fit, y_fit = train_sets[(exp.features, exp.use_mirror)]
         for name, pipe in build_pipelines().items():
             t0 = perf_counter()
             model = tune(name, pipe, X_fit, y_fit) if exp.use_grid_search else pipe.fit(X_fit, y_fit)
             elapsed = perf_counter() - t0
-            y_pred = model.predict(X_te)
+            y_pred = model.predict(test_sets[exp.features])
             acc = accuracy_score(y_te, y_pred)
+            mp = precision_score(y_te, y_pred, average="macro", zero_division=0)
+            mr = recall_score(y_te, y_pred, average="macro", zero_division=0)
             mf1 = f1_score(y_te, y_pred, average="macro")
             print(f"  {name:<4}  acc={acc:.4f}  macro-F1={mf1:.4f}  ({elapsed:.1f}s)")
             append_result({
-                "experiment": exp.tag, "model": name,
+                "experiment": exp.tag, "features": exp.features, "model": name,
                 "augment": exp.use_mirror, "tuned": exp.use_grid_search,
-                "split": "test", "accuracy": round(acc, 4), "macro_f1": round(mf1, 4),
-                "train_sec": round(elapsed, 2),
+                "params": tracked_params(name, model), "split": "test",
+                "accuracy": round(acc, 4), "macro_p": round(mp, 4), "macro_r": round(mr, 4),
+                "macro_f1": round(mf1, 4), "train_sec": round(elapsed, 2),
             })
-            if mf1 > best_f1:
+            if exp.features == "normalized" and mf1 > best_f1:
                 best_f1, best_pipe, best_name = mf1, model, f"{exp.tag.split('_')[0]}_{name}"
 
     print(f"\nบันทึก best model: {best_name}  macro-F1={best_f1:.4f}")

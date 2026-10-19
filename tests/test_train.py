@@ -3,10 +3,13 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
-from train import augment, build_pipelines
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+from features import LM_COLS, normalize, normalize_df
+from train import augment, build_pipelines, load_split
 
 
 @pytest.mark.filterwarnings("ignore::sklearn.exceptions.ConvergenceWarning")
@@ -20,6 +23,20 @@ def test_mlp_pipeline_fits_string_labels():
     assert not pipe.named_steps["clf"].early_stopping
     pipe.fit(X, y)
     assert set(pipe.predict(X)) <= set(y)
+
+
+def test_load_split_aligns_raw_and_normalized_rows():
+    """E1 compares feature types on identical rows: raw row i must normalize to normalized row i, labels aligned."""
+    df = pd.read_csv(ROOT / "data" / "processed" / "landmarks_test.csv")
+    _, _, mask = normalize_df(df)
+    sizes = df.loc[mask, ["img_w", "img_h"]].to_numpy()
+
+    X, X_raw, y = load_split("test")
+
+    assert X.shape == X_raw.shape == (len(y), 63)
+    np.testing.assert_array_equal(y, df.loc[mask, "label"].to_numpy())
+    for i in (0, len(y) // 2, len(y) - 1):
+        np.testing.assert_allclose(normalize(dict(zip(LM_COLS, X_raw[i])), *sizes[i]), X[i])
 
 
 def test_augment_appends_mirrored_copy_with_same_labels():
