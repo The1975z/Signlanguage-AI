@@ -3,13 +3,15 @@
 The letter shown is the majority vote over the last SMOOTH_WIN frames, displayed only when its
 probability in the current frame is at least CONF_THRESH. Frames are mirrored before detection;
 this is safe because the dataset contains both hand orientations and the model is about equally
-accurate on each.
+accurate on each. The FPS counter measures the whole loop (capture, detection, drawing) and the
+average is printed on exit.
 """
 from __future__ import annotations
 
 import collections
 import sys
 from pathlib import Path
+from time import perf_counter
 
 import cv2
 import joblib
@@ -31,6 +33,30 @@ SMOOTH_WIN  = 8
 CONF_THRESH = 0.6
 
 CLASS_CHARS = {code: char for code, char, _ in CLASSES}
+
+
+class FpsMeter:
+    """Loop rate for the on-screen counter, smoothed exponentially, plus the average since the first frame."""
+
+    def __init__(self, clock=perf_counter, smoothing: float = 0.9):
+        self.clock, self.smoothing = clock, smoothing
+        self.frames, self.first, self.last, self.fps = 0, 0.0, 0.0, 0.0
+
+    def tick(self) -> float:
+        """Record one frame and return the smoothed FPS (0 until two frames have been seen)."""
+        now = self.clock()
+        if self.frames == 0:
+            self.first = now
+        else:
+            rate = 1.0 / (now - self.last)
+            self.fps = rate if self.frames == 1 else self.smoothing * self.fps + (1 - self.smoothing) * rate
+        self.last = now
+        self.frames += 1
+        return self.fps
+
+    def average(self) -> float:
+        """Frames per second between the first and the last recorded frame."""
+        return (self.frames - 1) / (self.last - self.first) if self.frames > 1 else 0.0
 
 
 def load_classifier(name: str = "best"):
@@ -70,6 +96,7 @@ def run(model_name: str = "best"):
     cap     = cv2.VideoCapture(0)
     history: collections.deque = collections.deque(maxlen=SMOOTH_WIN)
     ts      = 0
+    meter   = FpsMeter()
 
     with build_detector() as detector:
         while cap.isOpened():
@@ -77,6 +104,7 @@ def run(model_name: str = "best"):
             if not ok:
                 break
 
+            fps   = meter.tick()
             frame = cv2.flip(frame, 1)
             h, w  = frame.shape[:2]
             ts   += 33
@@ -99,8 +127,7 @@ def run(model_name: str = "best"):
 
                 frame = draw_landmarks(frame, lm)
 
-            fps_text = f"FPS: {cap.get(cv2.CAP_PROP_FPS):.0f}"
-            cv2.putText(frame, fps_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(frame, f"FPS: {fps:.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
             if label_text:
                 frame = draw_thai(frame, label_text, (w // 2 - 30, 40), size=72)
@@ -111,6 +138,8 @@ def run(model_name: str = "best"):
 
     cap.release()
     cv2.destroyAllWindows()
+    if meter.frames > 1:
+        print(f"เฉลี่ย {meter.average():.1f} FPS จาก {meter.frames} เฟรม")
 
 
 if __name__ == "__main__":
