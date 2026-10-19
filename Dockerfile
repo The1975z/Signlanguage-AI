@@ -15,4 +15,4 @@ COPY models/hand_landmarker.task models/hand_landmarker.task
 
 RUN mkdir -p data/processed data/raw results models
 
-CMD ["python", "-I", "src/extract.py"]
+CMD ["python", "-I", "src/extract_landmarks.py"]

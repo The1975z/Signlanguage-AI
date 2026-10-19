@@ -12,7 +12,7 @@ from features import normalize
 
 
 def landmarks_to_row(landmarks) -> dict:
-    """Convert 21 landmarks (objects with .x/.y/.z) into the x0..z20 columns written by extract.py."""
+    """Convert 21 landmarks (objects with .x/.y/.z) into the x0..z20 columns written by extract_landmarks.py."""
     row = {}
     for i, lm in enumerate(landmarks):
         row[f"x{i}"] = lm.x

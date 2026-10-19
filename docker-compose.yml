@@ -7,7 +7,7 @@ services:
       - ./models:/app/models
       - ./reports:/app/reports
     command: >
-      sh -c "python -I src/extract.py &&
+      sh -c "python -I src/extract_landmarks.py &&
              python -I src/train.py &&
              python -I src/evaluate.py"
 
