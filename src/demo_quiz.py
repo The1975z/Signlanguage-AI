@@ -1,3 +1,8 @@
+"""โหมด quiz บนกล้องจริง: สุ่มตัวอักษรเป้าหมาย แสดงรูปตัวอย่างจาก training set
+และนับว่าผ่านเมื่อโมเดลทายตรงเป้าต่อเนื่อง HOLD_OK_SEC วินาที กด Space เพื่อข้าม Q เพื่อออก
+
+ใช้เป็น smoke test เท่านั้น ความแม่นของโมเดลให้ดูจาก evaluate.py และ tests/
+"""
 from __future__ import annotations
 
 import collections
@@ -45,6 +50,7 @@ font_xs  = ImageFont.truetype(FONT_PATH, 20)
 
 
 def load_ref_image(code: str) -> np.ndarray:
+    """ตัดภาพมือจาก training set ของคลาสนั้นเป็นรูปตัวอย่าง 220×220 และคืนภาพดำถ้าหามือไม่เจอ"""
     folder   = CLASS_FOLDER[code]
     imgs     = get_image_paths(RAW_DIR, "train", folder)
     opts_img = HandLandmarkerOptions(
@@ -86,6 +92,7 @@ def draw_skeleton(frame: np.ndarray, lm, w: int, h: int):
 
 def draw_debug_panel(frame: np.ndarray, probs: dict,
                      target_code: str, predicted_code: str) -> np.ndarray:
+    """ต่อแผงด้านขวาของเฟรม แสดง probability ทุกคลาสจากเฟรมล่าสุดที่เจอมือ (เขียว = เป้าหมาย, ส้ม = ตัวที่ทาย)"""
     h, w    = frame.shape[:2]
     pw      = 300
     panel   = np.zeros((h, pw, 3), dtype=np.uint8)
@@ -133,6 +140,7 @@ def draw_debug_panel(frame: np.ndarray, probs: dict,
 
 
 def draw_pil(frame: np.ndarray, fn) -> np.ndarray:
+    """ให้ fn วาดลงภาพผ่าน Pillow (รองรับอักษรไทย) แล้วแปลงกลับเป็น BGR ของ OpenCV"""
     pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     fn(pil)
     return cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)

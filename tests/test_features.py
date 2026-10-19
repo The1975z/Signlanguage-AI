@@ -1,3 +1,4 @@
+"""ตรวจคุณสมบัติของ normalize และ mirror ด้วยมือสังเคราะห์ ไม่ต้องใช้ dataset"""
 import sys
 from pathlib import Path
 
@@ -48,6 +49,7 @@ def test_translation_invariant():
 
 
 def test_scale_invariant():
+    """ขยายมือรอบข้อมือ 1.8 เท่า (เหมือนมือเข้าใกล้กล้อง) feature ต้องเท่าเดิม"""
     pts = _make_hand()
     scaled = pts.copy()
     wrist = pts[0].copy()
@@ -64,13 +66,13 @@ def test_wrist_zero_after_normalize():
     pts  = _make_hand()
     feat = normalize(_pts_to_row(pts), IMG_W, IMG_H)
     assert feat is not None
-    # จุด 0 (ข้อมือ) ต้องเป็น (0, 0, 0) หลัง normalize
     np.testing.assert_allclose(feat[:3], [0.0, 0.0, 0.0], atol=1e-9)
 
 
 def test_degenerate_returns_none():
+    """ข้อมือทับโคนนิ้วกลางทำให้ scale เป็นศูนย์ ต้องคืน None แทนการหารด้วยศูนย์"""
     pts = _make_hand()
-    pts[9] = pts[0]  # scale = 0
+    pts[9] = pts[0]
     feat = normalize(_pts_to_row(pts), IMG_W, IMG_H)
     assert feat is None
 

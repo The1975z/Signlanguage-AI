@@ -1,3 +1,7 @@
+"""normalize พิกัด landmark ให้เป็น feature ที่ train, evaluate และ demo ใช้ร่วมกัน
+
+ถ้าแก้ไฟล์นี้ต้อง train ใหม่ ไม่ต้อง extract ใหม่ เพราะ CSV เก็บพิกัดดิบไว้
+"""
 from __future__ import annotations
 
 from typing import Optional, Union
@@ -10,15 +14,10 @@ N_FEATURES = 63
 
 
 def normalize(row: Union[pd.Series, dict], img_w: int, img_h: int) -> Optional[np.ndarray]:
-    """
-    แปลง landmark 21 จุดเป็น feature vector 63 มิติที่ไม่ขึ้นกับตำแหน่งและขนาดในภาพ
+    """แปลงพิกัดดิบของ MediaPipe (0–1 ตามความกว้าง/สูงของภาพ) เป็น feature 63 มิติ
 
-    ขั้นตอน:
-      1. แก้สัดส่วน: x *= W/H, z *= W/H  (y คงเดิม)
-      2. ย้ายจุดกำเนิดไปที่ข้อมือ (จุด 0)
-      3. หารด้วยระยะข้อมือ→โคนนิ้วกลาง (จุด 9, เฉพาะ x,y)
-
-    คืน None ถ้า scale ≈ 0 (landmark ผิดปกติ)
+    ผลลัพธ์ไม่ขึ้นกับตำแหน่งมือ ระยะห่างจากกล้อง และสัดส่วนภาพ: ข้อมืออยู่ที่จุดกำเนิด
+    ใช้ระยะข้อมือถึงโคนนิ้วกลาง (จุด 9) เป็นหน่วยความยาว และคืน None ถ้าสองจุดนี้ทับกัน
     """
     aspect = img_w / img_h
 
@@ -38,14 +37,7 @@ def normalize(row: Union[pd.Series, dict], img_w: int, img_h: int) -> Optional[n
 
 
 def normalize_df(df: pd.DataFrame) -> tuple:
-    """
-    normalize ทุกแถวใน DataFrame ที่ detected=1
-
-    คืน:
-      X      — (N, 63) feature matrix
-      y      — (N,) label array (class code string)
-      mask   — (len(df),) bool mask ของแถวที่ normalize สำเร็จ
-    """
+    """normalize ทุกแถวที่ detected=1 คืน (X, y, mask) โดย mask ยาวเท่า df และเป็น True เฉพาะแถวที่อยู่ใน X"""
     X_rows, y_rows, mask = [], [], []
 
     for _, row in df.iterrows():
@@ -64,7 +56,7 @@ def normalize_df(df: pd.DataFrame) -> tuple:
 
 
 def mirror(X: np.ndarray) -> np.ndarray:
-    """กลับซ้าย-ขวา: x ← -x  (ใช้กับ feature ที่ normalize แล้ว)"""
+    """กลับซ้ายขวาบน feature ที่ normalize แล้ว (กลับเครื่องหมายแกน x) ใช้ทำ data augmentation"""
     X_m = X.copy()
     x_idx = [i * 3 for i in range(21)]
     X_m[:, x_idx] *= -1
