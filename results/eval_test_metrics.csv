@@ -1,0 +1,2 @@
+﻿split,model,images,detected,accuracy,end_to_end_accuracy,macro_p,macro_r,macro_f1
+test,E3_svm,1440,1431,0.9811,0.975,0.9814,0.9811,0.981
