@@ -3,10 +3,11 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
-from features import N_FEATURES, mirror, normalize
+from features import N_FEATURES, mirror, normalize, normalize_df
 
 RNG = np.random.default_rng(42)
 IMG_W, IMG_H = 1280, 720
@@ -93,6 +94,29 @@ def test_degenerate_returns_none():
     pts[9] = pts[0]
     feat = normalize(_pts_to_row(pts), IMG_W, IMG_H)
     assert feat is None
+
+
+def test_normalize_df_skips_undetected_and_degenerate_rows():
+    """Undetected and degenerate rows must be left out of X, and mask must point back to the rows that were kept."""
+    undetected, degenerate = 3, 7
+    rows = []
+    for i in range(10):
+        pts = _make_hand(seed=i)
+        if i == degenerate:
+            pts[9] = pts[0]
+        if i == undetected:
+            pts = np.full((21, 3), np.nan)
+        row = _pts_to_row(pts)
+        row["label"] = f"class_{i}"
+        row["detected"] = int(i != undetected)
+        rows.append(row)
+
+    X, y, mask = normalize_df(pd.DataFrame(rows))
+
+    kept = [i for i in range(10) if i not in (undetected, degenerate)]
+    assert X.shape == (len(kept), N_FEATURES)
+    np.testing.assert_array_equal(mask, [i in kept for i in range(10)])
+    np.testing.assert_array_equal(y, [f"class_{i}" for i in kept])
 
 
 def test_mirror_flips_x_only():

@@ -3,18 +3,10 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
-from features import normalize_df
 from train import augment, build_pipelines
-
-
-def _hand(rng) -> np.ndarray:
-    pts = rng.uniform(0.2, 0.8, (21, 3))
-    pts[9] = pts[0] + np.array([0.05, -0.2, 0.01])
-    return pts
 
 
 @pytest.mark.filterwarnings("ignore::sklearn.exceptions.ConvergenceWarning")
@@ -45,26 +37,3 @@ def test_augment_appends_mirrored_copy_with_same_labels():
     np.testing.assert_array_equal(Xa[20:, x_idx], -X[:, x_idx])
     np.testing.assert_array_equal(Xa[20:, yz_idx], X[:, yz_idx])
     np.testing.assert_array_equal(ya, np.concatenate([y, y]))
-
-
-def test_normalize_df_skips_undetected_and_degenerate_rows():
-    """Undetected and degenerate rows must be left out of X, and mask must point back to the rows that were kept."""
-    rng = np.random.default_rng(2)
-    undetected, degenerate = 3, 7
-    rows = []
-    for i in range(10):
-        pts = _hand(rng)
-        if i == degenerate:
-            pts[9] = pts[0]
-        coords = np.full((21, 3), np.nan) if i == undetected else pts
-        row = {"label": f"class_{i}", "detected": int(i != undetected), "img_w": 1280, "img_h": 720}
-        for j, (x, y, z) in enumerate(coords):
-            row[f"x{j}"], row[f"y{j}"], row[f"z{j}"] = x, y, z
-        rows.append(row)
-
-    X, y, mask = normalize_df(pd.DataFrame(rows))
-
-    kept = [i for i in range(10) if i not in (undetected, degenerate)]
-    assert X.shape == (len(kept), 63)
-    np.testing.assert_array_equal(mask, [i in kept for i in range(10)])
-    np.testing.assert_array_equal(y, [f"class_{i}" for i in kept])
