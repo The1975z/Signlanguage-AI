@@ -46,14 +46,13 @@ def get_image_paths(raw_base: Path, split_key: str, folder: str) -> list[Path]:
     """Return the sorted JPEG paths of one class in one split.
 
     Training and Test keep images in an ``Images (JPEG)`` subfolder, while Unseen stores them
-    directly in the class folder; both layouts are handled.
+    directly in the class folder; both layouts are handled. The extension is matched regardless of
+    case because the dataset mixes ``.jpg`` and ``.JPG``.
     """
-    split_dir  = raw_base / SPLITS[split_key]
-    class_dir  = split_dir / folder
+    class_dir  = raw_base / SPLITS[split_key] / folder
     img_subdir = class_dir / "Images (JPEG)"
-    if img_subdir.exists():
-        return sorted(img_subdir.glob("*.jpg"))
-    return sorted(class_dir.glob("*.jpg"))
+    image_dir  = img_subdir if img_subdir.exists() else class_dir
+    return sorted(p for p in image_dir.iterdir() if p.is_file() and p.suffix.lower() == ".jpg")
 
 
 def verify_classes(raw_base: Path) -> dict[str, list[str]]:
