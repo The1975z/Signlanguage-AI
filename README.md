@@ -1,47 +1,153 @@
 # Thai Fingerspelling Recognition
 
-ระบบจำแนกภาษามือไทยแบบสะกดนิ้ว 15 ตัวอักษร (ก ด ต น บ พ ฟ ม ย ร ล ว ส ห อ)
-ด้วย MediaPipe Hand Landmarks + Machine Learning
+Recognizes 15 Thai fingerspelling consonants — ก ด ต น บ พ ฟ ม ย ร ล ว ส ห อ — from a single image or
+a live webcam. MediaPipe Hand Landmarker turns each hand into 21 3-D landmarks, a shared
+normalization step makes them independent of position, distance and image aspect ratio, and a
+scikit-learn classifier predicts the letter.
 
-| รายการ | รายละเอียด |
-|---|---|
-| Dataset | One-Stage-TFS (Mendeley, DOI: 10.17632/rknd3wbz42.1) |
-| Feature extraction | MediaPipe HandLandmarker (Tasks API) → 63 ค่า (21 จุด × x/y/z) |
-| Classifier | KNN / SVM / Random Forest / MLP (scikit-learn) |
-| เป้าหมาย | macro-F1 ≥ 0.90 (Test), end-to-end accuracy ≥ 80% (Unseen) |
+## Results
 
-## โครงสร้างโปรเจกต์
+Final model: SVM (RBF kernel, `C=100`, `gamma=0.1`), selected on Test macro-F1 among the
+experiments in `results/experiments.csv`.
+
+| Split | Images | Hand detected | Accuracy (detected) | Macro-F1 | End-to-end accuracy |
+|---|---:|---:|---:|---:|---:|
+| Test | 1,405 | 1,396 (99.4%) | 0.9828 | 0.9827 | 0.9765 |
+| Unseen | 300 | 299 (99.7%) | pending | pending | pending |
+
+End-to-end accuracy counts images where no hand was detected as wrong answers. The Unseen split is
+the final hold-out and is reported once the final evaluation is run (see
+[Evaluation protocol](#evaluation-protocol)).
+
+## Repository layout
 
 ```
-Signlanguage-AI/
-├── data/
-│   ├── raw/          ← dataset (gitignored)
-│   └── processed/    ← landmarks CSV
-├── notebooks/        ← EDA และการวิเคราะห์
-├── src/
-│   ├── features.py   ← normalize (ใช้ร่วมกัน train/eval/demo)
-│   ├── train.py
-│   ├── evaluate.py
-│   └── realtime.py
-├── models/           ← model.joblib (gitignored)
-├── results/          ← experiments.csv
-└── reports/          ← รายงานวิชา (gitignored เก็บในเครื่องเท่านั้น)
+src/
+  config.py             dataset layout, class table, random seed
+  extract_landmarks.py  step 3 — MediaPipe landmarks for every image -> data/processed/*.csv
+  clean.py              step 4 — data audit: detection per class, anomaly checks, charts
+  features.py           step 5 — the one normalization used by training, evaluation and demos
+  train.py              step 6 — experiments E2–E4 and model selection on Test
+  evaluate.py           step 7 — final metrics and confusion matrices
+  inference.py          landmarks -> class probabilities, shared by both demos
+  realtime.py           step 8 — live webcam demo
+  demo_quiz.py          quiz mode with reference images, a smoke test for the live pipeline
+  plotting.py           matplotlib setup with a Thai-capable font
+tests/                  pytest suite (also runs in Docker)
+notebooks/01_eda.py     step 2 — image counts and cross-split duplicate check
+data/processed/         extracted landmarks (tracked); data/raw/ holds the dataset (ignored)
+models/                 best_meta.json (tracked); trained models and hand_landmarker.task (ignored)
+results/                experiment log, data-audit tables and charts
+reports/                course reports, kept locally (ignored)
 ```
 
-## วิธีติดตั้ง
+## Getting started
+
+Tested with Python 3.9 on macOS (Apple Silicon). The Docker image gives teammates on Linux or
+Windows the same environment; the test suite is verified inside it.
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Dataset
+**MediaPipe model** — download once into `models/`:
 
-ดาวน์โหลดจาก Mendeley Data และแตกไฟล์ไว้ที่ `data/raw/`
-ห้าม commit ภาพจาก dataset (ดู `.gitignore`)
+```bash
+curl -L -o models/hand_landmarker.task \
+  https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+```
 
-## อ้างอิง
+On Windows PowerShell use `Invoke-WebRequest -Uri <url> -OutFile models/hand_landmarker.task`.
 
-- Lata & Surinta (2022). ICIC Express Letters. DOI: 10.24507/icicel.16.05.529
-- One-Stage-TFS Dataset. DOI: 10.17632/rknd3wbz42.1
+**Dataset** — download One-Stage-TFS from Mendeley Data
+([10.17632/rknd3wbz42.1](https://doi.org/10.17632/rknd3wbz42.1)) and extract it so that
+`data/raw/One-Stage-TFS Thai One-Stage Fingerspelling Dataset/` contains `Training set`,
+`Test set` and `Unseen set`. Never commit dataset images.
+
+## Usage
+
+The extracted landmarks are committed, so you can start from step 4 without the dataset images
+(except `clean.py` and `demo_quiz.py`, which read them).
+
+| Step | Command | Writes |
+|---|---|---|
+| Extract landmarks | `python src/extract_landmarks.py` | `data/processed/landmarks_{train,test,unseen}.csv` |
+| Audit the data | `python src/clean.py` | `results/detection_by_class.csv`, `cleaning_summary.csv`, `undetected_by_class.png` |
+| Train and select | `python src/train.py` | `models/best.joblib`, `models/best_meta.json`, `results/experiments.csv` |
+| Evaluate | `python src/evaluate.py` | `results/final_results.csv`, confusion matrices — scores Unseen as well, so run it once at the end |
+| Live demo | `python src/realtime.py` | — (press `q` to quit) |
+| Quiz mode | `python src/demo_quiz.py` | — (`Space` skips a letter, `q` quits) |
+
+The webcam demos must run on the host. On macOS, grant the terminal app camera access
+(System Settings → Privacy & Security → Camera) and restart it.
+
+### Docker
+
+```bash
+docker compose run --rm test     # pytest in Linux
+docker compose run --rm train    # extract -> train -> evaluate
+```
+
+Building the image needs `models/hand_landmarker.task`; the `train` service also needs the
+dataset in `data/raw/`. Docker cannot reach the webcam on macOS or Windows, so the demos stay on
+the host.
+
+## Tests
+
+```bash
+python -m pytest tests/
+```
+
+| File | Guards |
+|---|---|
+| `test_features.py` | translation, scale and aspect-ratio invariance, degenerate hands, mirroring, row filtering in `normalize_df` |
+| `test_inference.py` | the demo inference path, replayed on the labelled Test split, matches `predict` |
+| `test_train.py` | mirror augmentation and the MLP configuration |
+| `test_clean.py` | the step-4 anomaly checks and per-class counts |
+
+The normalization, inference and training tests were checked with 11 deliberately injected faults
+(mutation testing); each fault makes at least one test fail.
+
+## Design notes
+
+- **One normalization.** `features.normalize` corrects the aspect ratio (`x, z × W/H`), moves the
+  wrist to the origin and divides by the wrist–middle-finger-MCP distance. Training, evaluation and
+  both demos call the same function.
+- **Class order.** `predict_proba` columns follow `clf.classes_` (sorted codes), not the Thai
+  order of `config.CLASSES`. Both demos predict through `inference.py`, which keys probabilities
+  by class name, and `test_inference.py` checks that this path matches `predict` on the Test split.
+- **Mirroring.** The live demo mirrors frames before detection. The dataset contains both hand
+  orientations (about 70/30 by MediaPipe handedness) and the model scores 98.8% and 97.5% on the
+  two orientations of the Test split, so either hand works.
+- **Missing and abnormal data.** Training uses detected rows only; Test and Unseen keep undetected
+  images so they count against end-to-end accuracy. One unreadable Training image (`sor55.jpg`) is
+  skipped at extraction. There are no NaN, far-out-of-frame or degenerate rows. One duplicate image
+  pair exists in Training and one in Test; removing the Training duplicate changes no Test
+  prediction, so the data is kept as extracted. Six of the 16 undetected images are the
+  downward-pointing sign พ.
+
+## Evaluation protocol
+
+| Split | Used for |
+|---|---|
+| Training | fitting and cross-validated grid search |
+| Test | comparing experiments and choosing the final model |
+| Unseen | one final measurement of the chosen model |
+
+## Known limitations
+
+- `MLPClassifier` runs without `early_stopping`: scikit-learn 1.6.1 fails when it is combined
+  with string labels.
+- Augmentation (E4) covers mirroring only; rotation and Gaussian noise are not implemented yet.
+- The demos load the Thai font from a macOS path; on Windows `demo_quiz.py` stops at start-up and
+  `realtime.py` cannot draw Thai text.
+- The course recommends Python 3.11; the code is tested on 3.9.
+
+## References
+
+- Lata & Surinta (2022). *ICIC Express Letters*. DOI
+  [10.24507/icicel.16.05.529](https://doi.org/10.24507/icicel.16.05.529)
+- One-Stage-TFS dataset. DOI [10.17632/rknd3wbz42.1](https://doi.org/10.17632/rknd3wbz42.1)
+- MediaPipe Hand Landmarker (Tasks API)
