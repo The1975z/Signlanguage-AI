@@ -21,13 +21,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from config import CLASSES, SPLITS, get_image_paths, get_raw_base
 from features import LM_COLS, normalize
+from fonts import thai_font
 from plotting import class_labels, plt
 
 FAR_LOW, FAR_HIGH = -0.5, 1.5
@@ -35,7 +36,6 @@ X_COLS = [c for c in LM_COLS if c.startswith("x")]
 Y_COLS = [c for c in LM_COLS if c.startswith("y")]
 RESULTS = ROOT / "results"
 FIGURES = ROOT / "reports" / "figures"
-FONT_PATH = "/System/Library/Fonts/Supplemental/Tahoma.ttf"
 
 
 def load_frames() -> dict:
@@ -146,10 +146,7 @@ def plot_undetected(table: pd.DataFrame, path: Path):
 def contact_sheet(frames: dict, path: Path, thumb_h: int = 200, cols: int = 4):
     """Save one image showing every undetected photo with its split, class and file name."""
     rows = pd.concat([df[df["detected"] == 0] for df in frames.values()])
-    try:
-        font = ImageFont.truetype(FONT_PATH, 18)
-    except OSError:
-        font = ImageFont.load_default()
+    font = thai_font(18)
     thumbs = []
     for _, r in rows.iterrows():
         img = Image.open(r["file_path"]).convert("RGB")

@@ -15,16 +15,16 @@ import joblib
 import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python.vision import HandLandmarker, HandLandmarkerOptions, RunningMode
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from config import CLASSES, get_image_paths
+from fonts import thai_font
 from inference import predict_from_landmarks, top_label
 
 MODEL_PATH  = str(ROOT / "models" / "hand_landmarker.task")
-FONT_PATH   = "/System/Library/Fonts/Supplemental/Tahoma.ttf"
 RAW_DIR     = ROOT / "data" / "raw" / "One-Stage-TFS Thai One-Stage Fingerspelling Dataset"
 
 SMOOTH_WIN  = 8
@@ -44,10 +44,10 @@ HAND_CONNECTIONS = [
     (5,9),(9,13),(13,17),
 ]
 
-font_big = ImageFont.truetype(FONT_PATH, 72)
-font_med = ImageFont.truetype(FONT_PATH, 36)
-font_sm  = ImageFont.truetype(FONT_PATH, 24)
-font_xs  = ImageFont.truetype(FONT_PATH, 20)
+font_big = thai_font(72)
+font_med = thai_font(36)
+font_sm  = thai_font(24)
+font_xs  = thai_font(20)
 
 
 def load_ref_image(code: str) -> np.ndarray:

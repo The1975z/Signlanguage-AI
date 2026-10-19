@@ -16,16 +16,16 @@ import joblib
 import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python.vision import HandLandmarker, HandLandmarkerOptions, RunningMode
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from config import CLASSES
+from fonts import thai_font
 from inference import predict_from_landmarks, top_label
 
 MODEL_PATH  = str(ROOT / "models" / "hand_landmarker.task")
-FONT_PATH   = "/System/Library/Fonts/Supplemental/Tahoma.ttf"
 FONT_SIZE   = 48
 SMOOTH_WIN  = 8
 CONF_THRESH = 0.6
@@ -53,11 +53,7 @@ def draw_thai(frame: np.ndarray, text: str, pos: tuple, size: int = FONT_SIZE) -
     """Draw text through Pillow, because cv2.putText cannot render Thai script."""
     pil   = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     draw  = ImageDraw.Draw(pil)
-    try:
-        font = ImageFont.truetype(FONT_PATH, size)
-    except Exception:
-        font = ImageFont.load_default()
-    draw.text(pos, text, font=font, fill=(0, 255, 0))
+    draw.text(pos, text, font=thai_font(size), fill=(0, 255, 0))
     return cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
 
 
