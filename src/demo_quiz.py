@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from dataset import CLASSES, get_image_paths
-from features import normalize
+from inference import predict_from_landmarks, top_label
 
 MODEL_PATH  = str(ROOT / "models" / "hand_landmarker.task")
 FONT_PATH   = "/System/Library/Fonts/Supplemental/Tahoma.ttf"
@@ -84,7 +84,7 @@ def draw_skeleton(frame: np.ndarray, lm, w: int, h: int):
         cv2.circle(frame, (px, py), r, color, -1)
 
 
-def draw_debug_panel(frame: np.ndarray, proba: np.ndarray,
+def draw_debug_panel(frame: np.ndarray, probs: dict,
                      target_code: str, predicted_code: str) -> np.ndarray:
     h, w    = frame.shape[:2]
     pw      = 300
@@ -102,7 +102,7 @@ def draw_debug_panel(frame: np.ndarray, proba: np.ndarray,
 
     for i, code in enumerate(CLASS_CODES):
         char = CLASS_CHARS[code]
-        p    = float(proba[i])
+        p    = float(probs.get(code, 0.0))
         y0   = 28 + i * row_h
 
         is_target = (code == target_code)
@@ -149,7 +149,7 @@ def run():
     history: collections.deque = collections.deque(maxlen=SMOOTH_WIN)
     hold_correct = 0.0
     ts           = 0
-    last_proba   = np.zeros(len(CLASS_CODES))
+    last_probs: dict = {}
 
     print("โหลด reference images ...")
     refs = {code: load_ref_image(code) for code, _, _ in CLASSES}
@@ -189,22 +189,16 @@ def run():
                 lm  = result.hand_landmarks[0]
                 draw_skeleton(frame, lm, w, h)
 
-                row = {f"x{i}": lm[i].x for i in range(21)}
-                row.update({f"y{i}": lm[i].y for i in range(21)})
-                row.update({f"z{i}": lm[i].z for i in range(21)})
-                feat = normalize(row, w, h)
-                if feat is not None:
-                    proba      = clf.predict_proba([feat])[0]
-                    last_proba = proba
-                    top_idx    = int(np.argmax(proba))
-                    history.append(top_idx)
+                probs = predict_from_landmarks(clf, lm, w, h)
+                if probs is not None:
+                    last_probs = probs
+                    history.append(top_label(probs)[0])
                     if len(history) == SMOOTH_WIN:
-                        from collections import Counter
-                        voted = Counter(history).most_common(1)[0][0]
-                        if proba[voted] >= CONF_THRESH:
-                            predicted_code = CLASS_CODES[voted]
-                            predicted_char = CLASS_CHARS[predicted_code]
-                            is_correct     = (predicted_code == target_code)
+                        voted = collections.Counter(history).most_common(1)[0][0]
+                        if probs[voted] >= CONF_THRESH:
+                            predicted_code = voted
+                            predicted_char = CLASS_CHARS[voted]
+                            is_correct     = (voted == target_code)
 
             if is_correct:
                 hold_correct += 1.0 / fps
@@ -249,7 +243,7 @@ def run():
                     d.text((10, h - 290), "!! อยู่คนเดียวในเฟรม !!", font=font_sm, fill=(60, 60, 255))
 
             frame = draw_pil(frame, draw_ui)
-            frame = draw_debug_panel(frame, last_proba, target_code, predicted_code)
+            frame = draw_debug_panel(frame, last_probs, target_code, predicted_code)
 
             cv2.imshow("Thai Fingerspelling Quiz", frame)
             key = cv2.waitKey(1) & 0xFF

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from dataset import CLASSES
-from features import normalize
+from inference import predict_from_landmarks, top_label
 
 MODEL_PATH  = str(ROOT / "models" / "hand_landmarker.task")
 FONT_PATH   = "/System/Library/Fonts/Supplemental/Tahoma.ttf"
@@ -24,7 +24,6 @@ SMOOTH_WIN  = 8
 CONF_THRESH = 0.6
 
 CLASS_CHARS = {code: char for code, char, _ in CLASSES}
-CLASS_CODES  = [code for code, _, _ in CLASSES]
 
 
 def load_classifier(name: str = "best"):
@@ -83,22 +82,15 @@ def run(model_name: str = "best"):
 
             label_text = ""
             if result.hand_landmarks:
-                lm  = result.hand_landmarks[0]
-                row = {f"x{i}": lm[i].x for i in range(21)}
-                row.update({f"y{i}": lm[i].y for i in range(21)})
-                row.update({f"z{i}": lm[i].z for i in range(21)})
-
-                feat = normalize(row, w, h)
-                if feat is not None:
-                    proba = clf.predict_proba([feat])[0]
-                    top3  = np.argsort(proba)[::-1][:3]
-                    history.append(top3[0])
+                lm    = result.hand_landmarks[0]
+                probs = predict_from_landmarks(clf, lm, w, h)
+                if probs is not None:
+                    history.append(top_label(probs)[0])
 
                     if len(history) == SMOOTH_WIN:
-                        from collections import Counter
-                        voted_idx = Counter(history).most_common(1)[0][0]
-                        if proba[voted_idx] >= CONF_THRESH:
-                            label_text = CLASS_CHARS.get(CLASS_CODES[voted_idx], "?")
+                        voted = collections.Counter(history).most_common(1)[0][0]
+                        if probs[voted] >= CONF_THRESH:
+                            label_text = CLASS_CHARS.get(voted, "?")
 
                 frame = draw_landmarks(frame, lm)
 
