@@ -62,6 +62,24 @@ def test_scale_invariant():
     np.testing.assert_allclose(f1, f2, atol=1e-5)
 
 
+def test_aspect_ratio_invariant():
+    """The same hand at the same pixel positions in a wider image must give the same features.
+
+    The live camera is 16:9 while the dataset mixes 3:2 and 16:9, and MediaPipe expresses x and z
+    as fractions of the image width.
+    """
+    pts = _make_hand()
+    wide_w = IMG_W + 400
+    wide = pts.copy()
+    wide[:, [0, 2]] *= IMG_W / wide_w
+
+    f1 = normalize(_pts_to_row(pts), IMG_W, IMG_H)
+    f2 = normalize(_pts_to_row(wide), wide_w, IMG_H)
+
+    assert f1 is not None and f2 is not None
+    np.testing.assert_allclose(f1, f2, atol=1e-9)
+
+
 def test_wrist_zero_after_normalize():
     pts  = _make_hand()
     feat = normalize(_pts_to_row(pts), IMG_W, IMG_H)

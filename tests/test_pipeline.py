@@ -1,65 +1,70 @@
+"""Tests for the data preparation and model setup in train.py."""
 import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
-from sklearn.metrics import f1_score
-from sklearn.neural_network import MLPClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
-from features import mirror
-
-RNG = np.random.default_rng(42)
-N_CLASSES = 15
-CLASSES = [f"class_{i}" for i in range(N_CLASSES)]
+from features import normalize_df
+from train import augment, build_pipelines
 
 
-def _make_dataset(n: int = 300):
-    X = RNG.standard_normal((n, 63))
-    y = np.array(CLASSES * (n // N_CLASSES + 1))[:n]
-    return X, y
+def _hand(rng) -> np.ndarray:
+    pts = rng.uniform(0.2, 0.8, (21, 3))
+    pts[9] = pts[0] + np.array([0.05, -0.2, 0.01])
+    return pts
 
 
-def test_mlp_string_labels_no_early_stopping():
-    X, y = _make_dataset()
-    pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", MLPClassifier(hidden_layer_sizes=(32,), max_iter=50, random_state=42)),
-    ])
+@pytest.mark.filterwarnings("ignore::sklearn.exceptions.ConvergenceWarning")
+def test_mlp_pipeline_fits_string_labels():
+    """sklearn 1.6.1 crashes when early_stopping is used with string labels, so the MLP in train.py must keep it off."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((150, 63))
+    y = np.array([f"class_{i % 15}" for i in range(150)])
+    pipe = build_pipelines()["mlp"].set_params(clf__max_iter=30)
+
+    assert not pipe.named_steps["clf"].early_stopping
     pipe.fit(X, y)
-    preds = pipe.predict(X)
-    assert set(preds).issubset(set(CLASSES))
+    assert set(pipe.predict(X)) <= set(y)
 
 
-def test_mirror_doubles_dataset():
-    X, y = _make_dataset(60)
-    Xm, ym = mirror(X), y.copy()
-    X2 = np.vstack([X, Xm])
-    y2 = np.concatenate([y, ym])
-    assert X2.shape == (120, 63)
-    assert y2.shape == (120,)
+def test_augment_appends_mirrored_copy_with_same_labels():
+    """augment must append an x-mirrored copy after the original rows, keeping y, z and the label order intact."""
+    rng = np.random.default_rng(1)
+    X = rng.standard_normal((20, 63))
+    y = np.array([f"class_{i % 5}" for i in range(20)])
+    x_idx = list(range(0, 63, 3))
+    yz_idx = [i for i in range(63) if i % 3]
+
+    Xa, ya = augment(X, y)
+
+    assert Xa.shape == (40, 63)
+    np.testing.assert_array_equal(Xa[:20], X)
+    np.testing.assert_array_equal(Xa[20:, x_idx], -X[:, x_idx])
+    np.testing.assert_array_equal(Xa[20:, yz_idx], X[:, yz_idx])
+    np.testing.assert_array_equal(ya, np.concatenate([y, y]))
 
 
-def test_normalize_df_shape():
-    pytest.importorskip("pandas")
-    import pandas as pd
-    from features import LM_COLS, normalize_df
-
+def test_normalize_df_skips_undetected_and_degenerate_rows():
+    """Undetected and degenerate rows must be left out of X, and mask must point back to the rows that were kept."""
+    rng = np.random.default_rng(2)
+    undetected, degenerate = 3, 7
     rows = []
     for i in range(10):
-        row = {"split": "train", "label": "ko_kai", "detected": 1,
-               "img_w": 1280, "img_h": 720}
-        pts = RNG.uniform(0.1, 0.9, (21, 3))
-        pts[9] = pts[0] + np.array([0.1, 0.2, 0.01])
-        for j in range(21):
-            row[f"x{j}"] = pts[j, 0]
-            row[f"y{j}"] = pts[j, 1]
-            row[f"z{j}"] = pts[j, 2]
+        pts = _hand(rng)
+        if i == degenerate:
+            pts[9] = pts[0]
+        coords = np.full((21, 3), np.nan) if i == undetected else pts
+        row = {"label": f"class_{i}", "detected": int(i != undetected), "img_w": 1280, "img_h": 720}
+        for j, (x, y, z) in enumerate(coords):
+            row[f"x{j}"], row[f"y{j}"], row[f"z{j}"] = x, y, z
         rows.append(row)
-    df = pd.DataFrame(rows)
-    X, y, mask = normalize_df(df)
-    assert X.shape == (10, 63)
-    assert y.shape == (10,)
-    assert mask.sum() == 10
+
+    X, y, mask = normalize_df(pd.DataFrame(rows))
+
+    kept = [i for i in range(10) if i not in (undetected, degenerate)]
+    assert X.shape == (len(kept), 63)
+    np.testing.assert_array_equal(mask, [i in kept for i in range(10)])
+    np.testing.assert_array_equal(y, [f"class_{i}" for i in kept])
