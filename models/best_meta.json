@@ -1,48 +1,44 @@
 {
-  "model": "E3_svm_tuned",
-  "sklearn": "1.6.1",
+  "experiment": "E3_svm",
+  "estimator": "SVC",
   "params": {
     "C": 100,
+    "break_ties": false,
+    "cache_size": 200,
+    "class_weight": null,
+    "coef0": 0.0,
+    "decision_function_shape": "ovr",
+    "degree": 3,
     "gamma": 0.1,
-    "kernel": "rbf"
+    "kernel": "rbf",
+    "max_iter": -1,
+    "probability": true,
+    "random_state": 42,
+    "shrinking": true,
+    "tol": 0.001,
+    "verbose": false
   },
   "classes": [
-    "ko_kai",
-    "do_dek",
-    "to_tao",
-    "no_nu",
     "bo_baimai",
-    "po_phan",
+    "do_dek",
     "fo_fan",
-    "mo_ma",
-    "yo_yak",
-    "ro_ruea",
-    "lo_ling",
-    "wo_waen",
-    "so_suea",
     "ho_hip",
-    "o_ang"
+    "ko_kai",
+    "lo_ling",
+    "mo_ma",
+    "no_nu",
+    "o_ang",
+    "po_phan",
+    "ro_ruea",
+    "so_suea",
+    "to_tao",
+    "wo_waen",
+    "yo_yak"
   ],
-  "class_order": {
-    "ko_kai": 0,
-    "do_dek": 1,
-    "to_tao": 2,
-    "no_nu": 3,
-    "bo_baimai": 4,
-    "po_phan": 5,
-    "fo_fan": 6,
-    "mo_ma": 7,
-    "yo_yak": 8,
-    "ro_ruea": 9,
-    "lo_ling": 10,
-    "wo_waen": 11,
-    "so_suea": 12,
-    "ho_hip": 13,
-    "o_ang": 14
-  },
   "features": {
     "n_features": 63,
-    "normalization": "wrist_origin_scale_by_pt9_xy"
+    "normalization": "features.normalize"
   },
+  "sklearn": "1.6.1",
   "seed": 42
 }
