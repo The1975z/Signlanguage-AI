@@ -35,7 +35,8 @@ src/
   plotting.py           matplotlib setup with a Thai-capable font
 tests/                  pytest suite (also runs in Docker)
 notebooks/01_eda.py     step 2 — image counts and cross-split duplicate check
-data/processed/         extracted landmarks (tracked); data/raw/ holds the dataset (ignored)
+data/raw/               One-Stage-TFS images and annotations (tracked, about 690 MB)
+data/processed/         extracted landmarks (tracked)
 models/                 best_meta.json (tracked); trained models and hand_landmarker.task (ignored)
 results/                experiment log, data-audit tables and charts
 reports/                course reports, kept locally (ignored)
@@ -61,15 +62,16 @@ curl -L -o models/hand_landmarker.task \
 
 On Windows PowerShell use `Invoke-WebRequest -Uri <url> -OutFile models/hand_landmarker.task`.
 
-**Dataset** — download One-Stage-TFS from Mendeley Data
-([10.17632/rknd3wbz42.1](https://doi.org/10.17632/rknd3wbz42.1)) and extract it so that
-`data/raw/One-Stage-TFS Thai One-Stage Fingerspelling Dataset/` contains `Training set`,
-`Test set` and `Unseen set`. Never commit dataset images.
+**Dataset** — One-Stage-TFS from Mendeley Data
+([10.17632/rknd3wbz42.1](https://doi.org/10.17632/rknd3wbz42.1)) is included under
+`data/raw/One-Stage-TFS Thai One-Stage Fingerspelling Dataset/` (`Training set`, `Test set`,
+`Unseen set`), so a clone is about 690 MB. Keep this repository private unless the dataset license
+allows redistribution.
 
 ## Usage
 
-The extracted landmarks are committed, so you can start from step 4 without the dataset images
-(except `clean.py` and `demo_quiz.py`, which read them).
+The extracted landmarks are committed too, so extraction only needs to run again after changing
+`extract_landmarks.py` or the dataset.
 
 | Step | Command | Writes |
 |---|---|---|
@@ -90,9 +92,8 @@ docker compose run --rm test     # pytest in Linux
 docker compose run --rm train    # extract -> train -> evaluate
 ```
 
-Building the image needs `models/hand_landmarker.task`; the `train` service also needs the
-dataset in `data/raw/`. Docker cannot reach the webcam on macOS or Windows, so the demos stay on
-the host.
+Building the image needs `models/hand_landmarker.task`. Docker cannot reach the webcam on macOS
+or Windows, so the demos stay on the host.
 
 ## Tests
 
