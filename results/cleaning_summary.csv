@@ -1,0 +1,4 @@
+﻿split,images,rows,unreadable,detected,undetected,nan_rows,far_outside,slightly_outside,duplicate_rows,degenerate,rows_used,class_min,class_max,duplicate_files
+train,5750,5749,1,5743,6,0,0,197,2,0,5743,380,384,por252.jpg por261.jpg
+test,1405,1405,0,1396,9,0,0,2,2,0,1405,90,94,KO_KAI_29.jpg KO_KAI_31.jpg
+unseen,300,300,0,299,1,0,0,0,0,0,300,19,20,
