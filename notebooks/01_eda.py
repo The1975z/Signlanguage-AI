@@ -28,18 +28,14 @@ def count_images() -> dict:
     return counts
 
 
-def check_cross_split_duplicates() -> list[tuple[str, str, str]]:
-    """Return ``(hash, split_a, split_b)`` for images found in both Training and Test."""
-    hashes: dict[str, list[tuple[str, str]]] = defaultdict(list)
-    for split_key in ("train", "test"):
-        for _, char, folder in CLASSES:
+def check_cross_split_duplicates() -> list[tuple[str, tuple[str, ...]]]:
+    """Return ``(hash, splits)`` for every image that appears in more than one split."""
+    splits_by_hash: dict[str, set[str]] = defaultdict(set)
+    for split_key in SPLITS:
+        for _, _, folder in CLASSES:
             for p in get_image_paths(RAW, split_key, folder):
-                hashes[file_hash(p)].append((split_key, char))
-    return [
-        (h, entries[0][0], entries[1][0])
-        for h, entries in hashes.items()
-        if len(entries) > 1 and entries[0][0] != entries[1][0]
-    ]
+                splits_by_hash[file_hash(p)].add(split_key)
+    return [(h, tuple(sorted(s))) for h, s in splits_by_hash.items() if len(s) > 1]
 
 
 def print_count_table(counts: dict):
@@ -81,12 +77,12 @@ def main():
         for _, char, _ in CLASSES
     )
 
-    print("\nตรวจภาพซ้ำข้ามชุด (train ↔ test) ...")
+    print("\nตรวจภาพซ้ำข้ามชุด (train / test / unseen) ...")
     dupes = check_cross_split_duplicates()
     if dupes:
         print(f"⚠️  พบ data leakage: {len(dupes)} ภาพ")
-        for h, s1, s2 in dupes[:5]:
-            print(f"   {h[:8]}  {s1} ↔ {s2}")
+        for h, splits in dupes[:5]:
+            print(f"   {h[:8]}  {' ↔ '.join(splits)}")
     else:
         print("✅  ไม่พบภาพซ้ำข้ามชุด")
 
