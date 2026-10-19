@@ -1,0 +1,20 @@
+services:
+  train:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./models:/app/models
+      - ./reports:/app/reports
+    command: >
+      sh -c "python -I src/extract.py &&
+             python -I src/train.py &&
+             python -I src/evaluate.py"
+
+  test:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./models:/app/models
+    command: python -I -m pytest tests/ -v

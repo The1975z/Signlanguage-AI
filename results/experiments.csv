@@ -1,0 +1,9 @@
+experiment,model,augment,tuned,split,accuracy,macro_f1,train_sec
+E2_baseline,knn,False,False,test,0.942,0.9414,0.0
+E2_baseline,svm,False,False,test,0.9577,0.9577,2.25
+E2_baseline,rf,False,False,test,0.9613,0.9613,0.64
+E2_baseline,mlp,False,False,test,0.9749,0.9748,6.69
+E4_mirror_aug,knn,True,False,test,0.9491,0.9495,0.01
+E4_mirror_aug,svm,True,False,test,0.9556,0.9555,7.73
+E4_mirror_aug,rf,True,False,test,0.9628,0.9627,1.17
+E4_mirror_aug,mlp,True,False,test,0.9735,0.9735,13.26

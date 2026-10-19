@@ -1,0 +1,32 @@
+# dataset — ห้าม commit ภาพ
+data/raw/
+
+# โมเดล binary (ขนาดใหญ่)
+models/*.joblib
+models/*.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+run_extract.sh
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# MediaPipe model file
+*.task
+
+# ผลลัพธ์ชั่วคราว
+*.log

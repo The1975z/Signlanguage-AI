@@ -1,0 +1,48 @@
+{
+  "model": "E3_svm_tuned",
+  "sklearn": "1.6.1",
+  "params": {
+    "C": 100,
+    "gamma": 0.1,
+    "kernel": "rbf"
+  },
+  "classes": [
+    "ko_kai",
+    "do_dek",
+    "to_tao",
+    "no_nu",
+    "bo_baimai",
+    "po_phan",
+    "fo_fan",
+    "mo_ma",
+    "yo_yak",
+    "ro_ruea",
+    "lo_ling",
+    "wo_waen",
+    "so_suea",
+    "ho_hip",
+    "o_ang"
+  ],
+  "class_order": {
+    "ko_kai": 0,
+    "do_dek": 1,
+    "to_tao": 2,
+    "no_nu": 3,
+    "bo_baimai": 4,
+    "po_phan": 5,
+    "fo_fan": 6,
+    "mo_ma": 7,
+    "yo_yak": 8,
+    "ro_ruea": 9,
+    "lo_ling": 10,
+    "wo_waen": 11,
+    "so_suea": 12,
+    "ho_hip": 13,
+    "o_ang": 14
+  },
+  "features": {
+    "n_features": 63,
+    "normalization": "wrist_origin_scale_by_pt9_xy"
+  },
+  "seed": 42
+}
