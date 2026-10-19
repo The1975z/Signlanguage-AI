@@ -25,7 +25,7 @@ Signlanguage-AI/
 │   └── realtime.py
 ├── models/           ← model.joblib (gitignored)
 ├── results/          ← experiments.csv
-└── reports/
+└── reports/          ← รายงานวิชา (gitignored เก็บในเครื่องเท่านั้น)
 ```
 
 ## วิธีติดตั้ง

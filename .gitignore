@@ -1,6 +1,9 @@
 # dataset — ห้าม commit ภาพ
 data/raw/
 
+# รายงานวิชา — เก็บในเครื่องเท่านั้น ไม่ขึ้น GitHub
+reports/
+
 # โมเดล binary (ขนาดใหญ่)
 models/*.joblib
 models/*.pkl
