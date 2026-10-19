@@ -1,3 +1,9 @@
+"""Step 3: run MediaPipe HandLandmarker on every dataset image and save data/processed/landmarks_<split>.csv.
+
+Images where no hand is found are kept with ``detected = 0`` and empty coordinates, so the cleaning
+step and the end-to-end accuracy can count them. Images that cannot be decoded are skipped and
+printed.
+"""
 import sys
 from pathlib import Path
 
@@ -18,6 +24,7 @@ LM_COLS = [f"{ax}{i}" for i in range(21) for ax in ("x", "y", "z")]
 
 
 def build_detector() -> HandLandmarker:
+    """Create a HandLandmarker in IMAGE mode that returns at most one hand."""
     opts = HandLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=MODEL_PATH),
         running_mode=RunningMode.IMAGE,
@@ -29,6 +36,12 @@ def build_detector() -> HandLandmarker:
 
 
 def extract_one(detector: HandLandmarker, img_path: Path, split: str, label: str) -> dict:
+    """Detect the hand in one image and return its CSV row.
+
+    Returns:
+        Dict with split, label, file path, image size, ``detected``, MediaPipe handedness and the
+        raw landmark coordinates x0..z20, which are NaN when no hand is found.
+    """
     mp_img  = mp.Image.create_from_file(str(img_path))
     result  = detector.detect(mp_img)
     img_h, img_w = mp_img.height, mp_img.width
@@ -61,6 +74,7 @@ def extract_one(detector: HandLandmarker, img_path: Path, split: str, label: str
 
 
 def extract_split(split_key: str) -> pd.DataFrame:
+    """Extract every image of one split and print the detection rate of each class."""
     raw   = get_raw_base(ROOT)
     rows  = []
 

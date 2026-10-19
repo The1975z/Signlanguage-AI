@@ -1,3 +1,4 @@
+"""Step 2 EDA: check the class folders, count images per class and split, and look for images shared by Training and Test."""
 import hashlib
 import sys
 from collections import defaultdict
@@ -12,10 +13,12 @@ RAW = get_raw_base(ROOT)
 
 
 def file_hash(path: Path) -> str:
+    """MD5 of the file bytes, used to spot identical images."""
     return hashlib.md5(path.read_bytes()).hexdigest()
 
 
 def count_images() -> dict:
+    """Return ``{split_key: {thai_letter: image_count}}``."""
     counts: dict[str, dict[str, int]] = {}
     for split_key in SPLITS:
         counts[split_key] = {}
@@ -26,6 +29,7 @@ def count_images() -> dict:
 
 
 def check_cross_split_duplicates() -> list[tuple[str, str, str]]:
+    """Return ``(hash, split_a, split_b)`` for images found in both Training and Test."""
     hashes: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for split_key in ("train", "test"):
         for _, char, folder in CLASSES:
@@ -39,6 +43,7 @@ def check_cross_split_duplicates() -> list[tuple[str, str, str]]:
 
 
 def print_count_table(counts: dict):
+    """Print the image counts as a class x split table with totals."""
     splits = list(SPLITS.keys())
     header = f"{'ตัว':>4}  " + "  ".join(f"{s:>8}" for s in splits)
     print(header)

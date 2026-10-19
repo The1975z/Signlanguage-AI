@@ -1,3 +1,8 @@
+"""Dataset layout, class table and random seed shared by every script.
+
+``CLASSES`` lists ``(code, Thai letter, dataset folder)`` in Thai alphabetical order. Trained
+models order their outputs by sorted code instead (see ``inference.class_probabilities``).
+"""
 from pathlib import Path
 
 DATASET_DIR = "One-Stage-TFS Thai One-Stage Fingerspelling Dataset"
@@ -33,10 +38,16 @@ FOLDER_MAP = {folder: code for code, _, folder in CLASSES}
 
 
 def get_raw_base(project_root: Path) -> Path:
+    """Return the folder under data/raw that the dataset archive was extracted to."""
     return project_root / "data" / "raw" / DATASET_DIR
 
 
 def get_image_paths(raw_base: Path, split_key: str, folder: str) -> list[Path]:
+    """Return the sorted JPEG paths of one class in one split.
+
+    Training and Test keep images in an ``Images (JPEG)`` subfolder, while Unseen stores them
+    directly in the class folder; both layouts are handled.
+    """
     split_dir  = raw_base / SPLITS[split_key]
     class_dir  = split_dir / folder
     img_subdir = class_dir / "Images (JPEG)"
@@ -46,6 +57,7 @@ def get_image_paths(raw_base: Path, split_key: str, folder: str) -> list[Path]:
 
 
 def verify_classes(raw_base: Path) -> dict[str, list[str]]:
+    """Return ``{split_key: [missing folders]}`` for class folders absent from a split; empty when complete."""
     missing: dict[str, list[str]] = {}
     for split_key, split_name in SPLITS.items():
         split_dir = raw_base / split_name
