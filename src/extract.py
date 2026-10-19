@@ -9,7 +9,7 @@ from mediapipe.tasks.python.vision import HandLandmarker, HandLandmarkerOptions,
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dataset import CLASSES, SPLITS, get_image_paths, get_raw_base
+from config import CLASSES, SPLITS, get_image_paths, get_raw_base
 
 MODEL_PATH = str(ROOT / "models" / "hand_landmarker.task")
 OUT_DIR    = ROOT / "data" / "processed"

@@ -29,9 +29,9 @@ from sklearn.svm import SVC
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from config import SEED
 from features import mirror, normalize_df
 
-SEED       = 42
 CV_FOLDS   = 5
 OUT_DIR    = ROOT / "models"
 RESULT_CSV = ROOT / "results" / "experiments.csv"

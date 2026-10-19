@@ -25,7 +25,7 @@ def class_probabilities(clf, feat: np.ndarray) -> dict:
     """Return the probability of every class, keyed by class name.
 
     The columns of ``predict_proba`` follow ``clf.classes_`` (sorted labels), not the order of
-    ``dataset.CLASSES``, so never map a column index to a class name by hand.
+    ``config.CLASSES``, so never map a column index to a class name by hand.
 
     Args:
         clf: Fitted classifier or pipeline that supports ``predict_proba``.

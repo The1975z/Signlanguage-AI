@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dataset import CLASSES
+from config import CLASSES
 from features import normalize_df
 from inference import class_probabilities, predict_from_landmarks, top_label
 
@@ -54,7 +54,7 @@ def knn():
 
 
 def test_probabilities_follow_classifier_class_order(knn):
-    """``classes_`` is ordered differently from ``dataset.CLASSES``, so a wrong index-to-name mapping fails here."""
+    """``classes_`` is ordered differently from ``config.CLASSES``, so a wrong index-to-name mapping fails here."""
     assert list(knn.classes_) != CODES, "class orders match by coincidence; this test cannot catch an ordering bug"
     X, _, _ = normalize_df(_load("test").head(60))
     for x in X:

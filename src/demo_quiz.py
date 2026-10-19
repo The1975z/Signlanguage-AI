@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dataset import CLASSES, get_image_paths
+from config import CLASSES, get_image_paths
 from inference import predict_from_landmarks, top_label
 
 MODEL_PATH  = str(ROOT / "models" / "hand_landmarker.task")

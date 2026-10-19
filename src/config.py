@@ -2,6 +2,8 @@ from pathlib import Path
 
 DATASET_DIR = "One-Stage-TFS Thai One-Stage Fingerspelling Dataset"
 
+SEED = 42
+
 SPLITS = {
     "train":  "Training set",
     "test":   "Test set",

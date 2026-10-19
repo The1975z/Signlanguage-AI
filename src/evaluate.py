@@ -18,7 +18,7 @@ from sklearn.metrics import (
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dataset import CLASSES
+from config import CLASSES
 from features import normalize_df
 
 CLASS_CODES = [code for code, _, _ in CLASSES]
